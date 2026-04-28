@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ツーリング時間計算</title>
+
+<!-- iPhoneアプリ風 -->
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ツーリング">
+
+<!-- アイコン（同じフォルダにicon.png置けば反映） -->
+
+<link rel="apple-touch-icon" href="icon.png">
+
+<style>
+body {
+  font-family: sans-serif;
+  padding: 10px;
+  max-width: 600px;
+  margin: auto;
+  background: #fff;
+  color: #000;
+}
+
+body.dark {
+  background: #111;
+  color: #eee;
+}
+
+h2 { text-align: center; }
+
+/* ボタン */
+button {
+  padding: 10px;
+  margin: 5px 0;
+  font-size: 16px;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+}
+
+.btn-save { background: #4CAF50; color: #fff; }
+.btn-load { background: #2196F3; color: #fff; }
+.btn-delete { background: #f44336; color: #fff; }
+.btn-add { background: #FF9800; color: #fff; }
+.btn-toggle { background: #555; color: #fff; }
+
+/* 入力 */
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+  font-size: 16px;
+}
+
+/* テーブル */
+.table-wrap { overflow-x: auto; }
+
+table {
+  border-collapse: collapse;
+  min-width: 700px;
+  width: 100%;
+  table-layout: fixed;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+}
+
+body.dark th, body.dark td { border-color: #555; }
+th { background: #eee; }
+body.dark th { background: #333; }
+
+/* 列幅 */
+th:nth-child(1), td:nth-child(1) { width: 40px; }
+th:nth-child(2), td:nth-child(2) { width: 120px; }
+th:nth-child(3), td:nth-child(3) { width: 120px; }
+th:nth-child(4), td:nth-child(4) { width: 80px; }
+th:nth-child(5), td:nth-child(5) { width: 80px; }
+th:nth-child(6), td:nth-child(6) { width: 80px; }
+th:nth-child(7), td:nth-child(7) { width: 90px; }
+th:nth-child(8), td:nth-child(8) { width: 90px; }
+th:nth-child(9), td:nth-child(9) { width: 110px; }
+
+td input { width: 100%; box-sizing: border-box; font-size: 14px; }
+
+/* モバイル */
+.row { border-bottom: 1px solid #ccc; padding: 10px 0; }
+
+.time { color: #2196F3; font-weight: bold; }
+.final { color: #f44336; font-size: 22px; font-weight: bold; }
+</style>
+
+</head>
+
+<body>
+
+<h2>ツーリング時間計算</h2>
+
+<button class="btn-toggle" onclick="toggleMode()">📱⇄📊 UI切替</button> <button class="btn-toggle" onclick="toggleDark()">🌙 ダークモード</button>
+
+出発時間 <input type="time" id="startTime" value="07:00" onchange="calculate()">
+
+保存名 <input id="saveName">
+
+<button class="btn-save" onclick="saveData()">💾 保存</button>
+
+<select id="saveList"></select> <button class="btn-load" onclick="loadData()">📂 読込</button> <button class="btn-delete" onclick="deleteData()">❌ 削除</button>
+
+<hr>
+
+<div id="app"></div>
+
+<button class="btn-add" onclick="addRow()">＋ルート追加</button>
+
+<h3 id="final"></h3>
+
+<script>
+let routes=[];
+let mode=localStorage.getItem("mode") || "mobile";
+
+/* ダーク */
+if(localStorage.getItem("dark")==="on"){
+  document.body.classList.add("dark");
+}
+
+function toggleDark(){
+  document.body.classList.toggle("dark");
+  localStorage.setItem("dark",
+    document.body.classList.contains("dark")?"on":"off"
+  );
+}
+
+/* UI切替 */
+function toggleMode(){
+  mode = mode==="mobile" ? "table" : "mobile";
+  localStorage.setItem("mode", mode);
+  render();
+}
+
+/* 保存 */
+function getAllData(){
+  return JSON.parse(localStorage.getItem("touringList")||"{}");
+}
+
+function updateSaveList(){
+  saveList.innerHTML="";
+  Object.keys(getAllData()).forEach(n=>{
+    saveList.innerHTML+=`<option>${n}</option>`;
+  });
+}
+
+function saveData(){
+  let name=saveName.value;
+  if(!name) return;
+
+  let d=getAllData();
+  d[name]={startTime:startTime.value,routes};
+
+  localStorage.setItem("touringList",JSON.stringify(d));
+  updateSaveList();
+}
+
+function loadData(){
+  let d=getAllData()[saveList.value];
+  if(!d) return;
+
+  startTime.value=d.startTime;
+  routes=d.routes;
+  render();
+}
+
+function deleteData(){
+  let d=getAllData();
+  delete d[saveList.value];
+
+  localStorage.setItem("touringList",JSON.stringify(d));
+  updateSaveList();
+}
+
+/* 行 */
+function addRow(){
+  routes.push({from:"",to:"",distance:0,speed:0,break:0});
+  render();
+}
+
+function insertRow(i){
+  routes.splice(i+1,0,{from:"",to:"",distance:0,speed:0,break:0});
+  render();
+}
+
+function deleteRow(i){
+  routes.splice(i,1);
+  render();
+}
+
+function update(i,k,v){
+  routes[i][k]=(k==="from"||k==="to")?v:Number(v);
+  calculate();
+}
+
+/* 描画 */
+function render(){
+  const app=document.getElementById("app");
+
+  if(mode==="table"){
+    app.innerHTML=`
+    <div class="table-wrap">
+    <table>
+    <tr>
+    <th>No</th><th>出発</th><th>到着</th>
+    <th>距離</th><th>速度</th><th>休憩</th>
+    <th>出発</th><th>到着</th><th>操作</th>
+    </tr>
+    ${routes.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`<span id="from_${i}"></span>`}</td>
+      <td><input value="${r.to}" onchange="update(${i},'to',this.value)"></td>
+      <td><input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)"></td>
+      <td><input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)"></td>
+      <td><input type="number" value="${r.break}" onchange="update(${i},'break',this.value)"></td>
+      <td class="time" id="start_${i}"></td>
+      <td class="time" id="arrival_${i}"></td>
+      <td>
+        <button onclick="insertRow(${i})">＋</button>
+        <button onclick="deleteRow(${i})">削除</button>
+      </td>
+    </tr>`).join("")}
+    </table>
+    </div>`;
+  } else {
+    app.innerHTML=routes.map((r,i)=>`
+    <div class="row">
+      <b>${i+1}</b><br>
+      出発:
+      ${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`
+      :`<div id="from_${i}"></div>`}
+      到着:<input value="${r.to}" onchange="update(${i},'to',this.value)"><br>
+      出発:<span id="start_${i}" class="time"></span>
+      到着:<span id="arrival_${i}" class="time"></span><br>
+      距離:<input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)">
+      速度:<input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)">
+      休憩:<input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
+      <button onclick="insertRow(${i})">＋追加</button>
+      <button onclick="deleteRow(${i})">削除</button>
+    </div>`).join("");
+  }
+
+  calculate();
+}
+
+/* 計算 */
+function calculate(){
+  let t=startTime.value;
+  if(!t)return;
+
+  let [h,m]=t.split(":").map(Number);
+  let cur=h*60+m;
+  let final="";
+
+  routes.forEach((r,i)=>{
+    if(i>0){
+      r.from=routes[i-1].to;
+      let el=document.getElementById("from_"+i);
+      if(el) el.textContent=r.from||"";
+    }
+
+    if(!r.speed||!r.distance)return;
+
+    let start=cur;
+    let arr=start+(r.distance/r.speed)*60;
+
+    let sh=Math.floor(start/60)%24;
+    let sm=Math.floor(start%60);
+    let ah=Math.floor(arr/60)%24;
+    let am=Math.floor(arr%60);
+
+    let s=document.getElementById("start_"+i);
+    let a=document.getElementById("arrival_"+i);
+    if(s)s.textContent=`${pad(sh)}:${pad(sm)}`;
+    if(a)a.textContent=`${pad(ah)}:${pad(am)}`;
+
+    cur=arr+r.break;
+    final=`${pad(ah)}:${pad(am)}`;
+  });
+
+  document.getElementById("final").innerHTML =
+    final ? `最終到着: <span class="final">${final}</span>` : "";
+}
+
+function pad(n){ return n.toString().padStart(2,"0"); }
+
+/* 初期 */
+updateSaveList();
+addRow();
+render();
+</script>
+
+</body>
+</html>
