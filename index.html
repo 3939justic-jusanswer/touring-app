@@ -7,30 +7,42 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ツーリング">
-<link rel="apple-touch-icon" href="icon.png">
 
 <style>
-body { font-family: sans-serif; padding: 10px; max-width: 600px; margin: auto; background:#fff; color:#000; }
-body.dark { background:#111; color:#eee; }
+body{font-family:sans-serif;padding:10px;max-width:600px;margin:auto;background:#fff;color:#000;}
+body.dark{background:#111;color:#eee;}
 
-button { padding:10px; margin:5px 0; font-size:16px; width:100%; border:none; border-radius:6px; }
+/* ★ 上部固定バー */
+.sticky{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:inherit;
+  padding-bottom:6px;
+}
+
+/* ボタン */
+button{padding:10px;margin:4px 0;width:100%;font-size:16px;border:none;border-radius:6px;}
+.btn-toggle{background:#555;color:#fff;}
 .btn-save{background:#4CAF50;color:#fff;}
 .btn-load{background:#2196F3;color:#fff;}
 .btn-delete{background:#f44336;color:#fff;}
 .btn-add{background:#FF9800;color:#fff;}
-.btn-toggle{background:#555;color:#fff;}
+.btn-mini{width:48%;font-size:12px;padding:6px;margin:2px 1%;}
 
-input,select{width:100%;padding:8px;margin:5px 0;}
+/* 入力 */
+input,select{width:100%;padding:8px;margin:4px 0;}
 
+/* 表 */
 .table-wrap{overflow-x:auto;}
-table{border-collapse:collapse;min-width:700px;width:100%;table-layout:fixed;}
-th,td{border:1px solid #ccc;padding:6px;text-align:center;}
+table{border-collapse:collapse;min-width:720px;width:100%;table-layout:fixed;}
+th,td{border:1px solid #ccc;padding:4px;text-align:center;}
 body.dark th,body.dark td{border-color:#555;}
 th{background:#eee;}
 body.dark th{background:#333;}
+td input{width:100%;box-sizing:border-box;font-size:14px;margin:0;}
 
+/* 列幅 */
 th:nth-child(1),td:nth-child(1){width:40px;}
 th:nth-child(2),td:nth-child(2){width:120px;}
 th:nth-child(3),td:nth-child(3){width:120px;}
@@ -39,9 +51,7 @@ th:nth-child(5),td:nth-child(5){width:80px;}
 th:nth-child(6),td:nth-child(6){width:80px;}
 th:nth-child(7),td:nth-child(7){width:90px;}
 th:nth-child(8),td:nth-child(8){width:90px;}
-th:nth-child(9),td:nth-child(9){width:110px;}
-
-td input{width:100%;box-sizing:border-box;font-size:14px;}
+th:nth-child(9),td:nth-child(9){width:150px;}
 
 .row{border-bottom:1px solid #ccc;padding:10px 0;}
 .time{color:#2196F3;font-weight:bold;}
@@ -52,17 +62,22 @@ td input{width:100%;box-sizing:border-box;font-size:14px;}
 
 <body>
 
-<h2>ツーリング時間計算</h2>
+<h2>ツーリング計算</h2>
 
-<button class="btn-toggle" onclick="toggleMode()">📱⇄📊 UI切替</button> <button class="btn-toggle" onclick="toggleDark()">🌙 ダークモード</button> <button class="btn-toggle" onclick="showQR()">📷 QR共有</button>
+<!-- ★ 固定エリア -->
+
+<div class="sticky">
+<button class="btn-toggle" onclick="toggleMode()">📱⇄📊 UI切替</button>
+<button class="btn-toggle" onclick="toggleDark()">🌙 ダーク</button>
+<button class="btn-toggle" onclick="showQR()">📷 QR共有</button>
+<button class="btn-toggle" onclick="shareURL()">🔗 URL共有</button>
+</div>
 
 出発時間 <input type="time" id="startTime" value="07:00" onchange="calculate()">
 
 保存名 <input id="saveName">
 
-<button class="btn-save" onclick="saveData()">💾 保存</button>
-
-<select id="saveList"></select> <button class="btn-load" onclick="loadData()">📂 読込</button> <button class="btn-delete" onclick="deleteData()">❌ 削除</button>
+<button class="btn-save" onclick="saveData()">💾 保存</button> <select id="saveList"></select> <button class="btn-load" onclick="loadData()">📂 読込</button> <button class="btn-delete" onclick="deleteData()">❌ 削除</button>
 
 <hr>
 
@@ -70,61 +85,52 @@ td input{width:100%;box-sizing:border-box;font-size:14px;}
 <button class="btn-add" onclick="addRow()">＋ルート追加</button>
 
 <h3 id="final"></h3>
-<div id="qrBox" style="text-align:center;margin-top:10px;"></div>
+<div id="qrBox" style="text-align:center;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <script>
 let routes=[];
-let mode=localStorage.getItem("mode") || "mobile";
+let mode=localStorage.getItem("mode")||"mobile";
 
 /* ダーク */
-if(localStorage.getItem("dark")==="on"){
-  document.body.classList.add("dark");
-}
+if(localStorage.getItem("dark")==="on")document.body.classList.add("dark");
 function toggleDark(){
-  document.body.classList.toggle("dark");
-  localStorage.setItem("dark",document.body.classList.contains("dark")?"on":"off");
+ document.body.classList.toggle("dark");
+ localStorage.setItem("dark",document.body.classList.contains("dark")?"on":"off");
 }
 
-/* UI切替 */
+/* UI */
 function toggleMode(){
-  mode = mode==="mobile" ? "table" : "mobile";
-  localStorage.setItem("mode", mode);
-  render();
+ mode=mode==="mobile"?"table":"mobile";
+ localStorage.setItem("mode",mode);
+ render();
 }
 
 /* 保存 */
-function getAllData(){
-  return JSON.parse(localStorage.getItem("touringList")||"{}");
-}
+function getAll(){return JSON.parse(localStorage.getItem("touringList")||"{}");}
 function updateSaveList(){
-  saveList.innerHTML="";
-  Object.keys(getAllData()).forEach(n=>{
-    saveList.innerHTML+=`<option>${n}</option>`;
-  });
+ saveList.innerHTML="";
+ Object.keys(getAll()).forEach(n=>saveList.innerHTML+=`<option>${n}</option>`);
 }
 function saveData(){
-  let name=saveName.value;
-  if(!name)return;
-  let d=getAllData();
-  d[name]={startTime:startTime.value,routes};
-  localStorage.setItem("touringList",JSON.stringify(d));
-  updateSaveList();
+ let n=saveName.value;if(!n)return;
+ let d=getAll();
+ d[n]={startTime:startTime.value,routes};
+ localStorage.setItem("touringList",JSON.stringify(d));
+ updateSaveList();
 }
 function loadData(){
-  let d=getAllData()[saveList.value];
-  if(!d)return;
-  startTime.value=d.startTime;
-  routes=d.routes;
-  saveName.value=saveList.value;
-  render();
+ let d=getAll()[saveList.value];if(!d)return;
+ startTime.value=d.startTime;
+ routes=d.routes;
+ saveName.value=saveList.value;
+ render();
 }
 function deleteData(){
-  let d=getAllData();
-  delete d[saveList.value];
-  localStorage.setItem("touringList",JSON.stringify(d));
-  updateSaveList();
+ let d=getAll();delete d[saveList.value];
+ localStorage.setItem("touringList",JSON.stringify(d));
+ updateSaveList();
 }
 
 /* 行操作 */
@@ -135,122 +141,96 @@ function update(i,k,v){routes[i][k]=(k==="from"||k==="to")?v:Number(v);calculate
 
 /* 描画 */
 function render(){
-  const app=document.getElementById("app");
-
-  if(mode==="table"){
-    app.innerHTML=`
-    <div class="table-wrap">
-    <table>
-    <tr>
-    <th>No</th><th>出発</th><th>到着</th>
-    <th>距離</th><th>速度</th><th>休憩</th>
-    <th>出発</th><th>到着</th><th>操作</th>
-    </tr>
-    ${routes.map((r,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`<span id="from_${i}"></span>`}</td>
-      <td><input value="${r.to}" onchange="update(${i},'to',this.value)"></td>
-      <td><input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)"></td>
-      <td><input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)"></td>
-      <td><input type="number" value="${r.break}" onchange="update(${i},'break',this.value)"></td>
-      <td class="time" id="start_${i}"></td>
-      <td class="time" id="arrival_${i}"></td>
-      <td>
-        <button onclick="insertRow(${i})">＋</button>
-        <button onclick="deleteRow(${i})">削除</button>
-      </td>
-    </tr>`).join("")}
-    </table>
-    </div>`;
-  } else {
-    app.innerHTML=routes.map((r,i)=>`
-    <div class="row">
-      <b>${i+1}</b><br>
-      出発:${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`<div id="from_${i}"></div>`}
-      到着:<input value="${r.to}" onchange="update(${i},'to',this.value)">
-      出発:<span id="start_${i}" class="time"></span>
-      到着:<span id="arrival_${i}" class="time"></span>
-      距離:<input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)">
-      速度:<input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)">
-      休憩:<input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
-      <button onclick="insertRow(${i})">＋追加</button>
-      <button onclick="deleteRow(${i})">削除</button>
-    </div>`).join("");
-  }
-
-  calculate();
+ if(mode==="table"){
+  app.innerHTML=`<div class="table-wrap"><table>
+  <tr>
+  <th>No</th><th>出発</th><th>到着</th>
+  <th>距離</th><th>速度</th><th>休憩</th>
+  <th>出発</th><th>到着</th><th>操作</th>
+  </tr>
+  ${routes.map((r,i)=>`
+  <tr>
+    <td>${i+1}</td>
+    <td>${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`<span id="from_${i}"></span>`}</td>
+    <td><input value="${r.to}" onchange="update(${i},'to',this.value)"></td>
+    <td><input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)"></td>
+    <td><input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)"></td>
+    <td><input type="number" value="${r.break}" onchange="update(${i},'break',this.value)"></td>
+    <td class="time" id="start_${i}"></td>
+    <td class="time" id="arrival_${i}"></td>
+    <td>
+      <button class="btn-mini" onclick="insertRow(${i})">ここに追加</button>
+      <button class="btn-mini" onclick="deleteRow(${i})">削除</button>
+    </td>
+  </tr>`).join("")}
+  </table></div>`;
+ }else{
+  app.innerHTML=routes.map((r,i)=>`
+  <div class="row">
+    <b>${i+1}</b><br>
+    出発:${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`<div id="from_${i}"></div>`}
+    到着:<input value="${r.to}" onchange="update(${i},'to',this.value)">
+    出発:<span id="start_${i}" class="time"></span>
+    到着:<span id="arrival_${i}" class="time"></span>
+    距離:<input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)">
+    速度:<input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)">
+    休憩:<input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
+    <button onclick="insertRow(${i})">＋追加</button>
+    <button onclick="deleteRow(${i})">削除</button>
+  </div>`).join("");
+ }
+ calculate();
 }
 
 /* 計算 */
 function calculate(){
-  let t=startTime.value;
-  if(!t)return;
-
-  let [h,m]=t.split(":").map(Number);
-  let cur=h*60+m;
-  let final="";
-
-  routes.forEach((r,i)=>{
-    if(i>0){
-      r.from=routes[i-1].to;
-      let el=document.getElementById("from_"+i);
-      if(el) el.textContent=r.from||"";
-    }
-
-    if(!r.speed||!r.distance)return;
-
-    let start=cur;
-    let arr=start+(r.distance/r.speed)*60;
-
-    let sh=Math.floor(start/60)%24;
-    let sm=Math.floor(start%60);
-    let ah=Math.floor(arr/60)%24;
-    let am=Math.floor(arr%60);
-
-    let s=document.getElementById("start_"+i);
-    let a=document.getElementById("arrival_"+i);
-    if(s)s.textContent=`${pad(sh)}:${pad(sm)}`;
-    if(a)a.textContent=`${pad(ah)}:${pad(am)}`;
-
-    cur=arr+r.break;
-    final=`${pad(ah)}:${pad(am)}`;
-  });
-
-  document.getElementById("final").innerHTML =
-    final ? `最終到着: <span class="final">${final}</span>` : "";
-}
-
-function pad(n){ return n.toString().padStart(2,"0"); }
-
-/* ★QR（名前付き） */
-function showQR(){
-  if(!routes.length){alert("ルート入れろ");return;}
-
-  const data = {
-    name: document.getElementById("saveName").value || "",
-    startTime: startTime.value,
-    routes: routes
-  };
-
-  const encoded = encodeURIComponent(JSON.stringify(data));
-  const url = location.origin + location.pathname + "?data=" + encoded;
-
-  qrBox.innerHTML="";
-  QRCode.toCanvas(url,{width:220},(e,c)=>qrBox.appendChild(c));
-}
-
-/* ★URL復元（名前含む） */
-function loadFromURL(){
-  const p=new URLSearchParams(location.search);
-  if(p.get("data")){
-    let d=JSON.parse(decodeURIComponent(p.get("data")));
-    startTime.value=d.startTime;
-    routes=d.routes;
-    if(d.name){
-      document.getElementById("saveName").value=d.name;
-    }
+ let [h,m]=startTime.value.split(":").map(Number);
+ let cur=h*60+m,final="";
+ routes.forEach((r,i)=>{
+  if(i>0){
+    r.from=routes[i-1].to;
+    let el=document.getElementById("from_"+i);
+    if(el)el.textContent=r.from||"";
   }
+  if(!r.speed||!r.distance)return;
+  let st=cur,ar=st+(r.distance/r.speed)*60;
+  let sh=Math.floor(st/60)%24,sm=Math.floor(st%60);
+  let ah=Math.floor(ar/60)%24,am=Math.floor(ar%60);
+  document.getElementById("start_"+i).textContent=`${pad(sh)}:${pad(sm)}`;
+  document.getElementById("arrival_"+i).textContent=`${pad(ah)}:${pad(am)}`;
+  cur=ar+r.break;
+  final=`${pad(ah)}:${pad(am)}`;
+ });
+ finalEl.innerHTML=final?`最終到着: <span class="final">${final}</span>`:"";
+}
+function pad(n){return n.toString().padStart(2,"0");}
+
+/* URL */
+function shareURL(){
+ if(!routes.length){alert("ルート入れろ");return;}
+ const data={name:saveName.value||"",startTime:startTime.value,routes};
+ const url=location.origin+location.pathname+"?data="+encodeURIComponent(JSON.stringify(data));
+ if(navigator.share){navigator.share({url});}else{prompt("コピー",url);}
+}
+
+/* QR */
+function showQR(){
+ if(!routes.length){alert("ルート入れろ");return;}
+ const data={name:saveName.value||"",startTime:startTime.value,routes};
+ const url=location.origin+location.pathname+"?data="+encodeURIComponent(JSON.stringify(data));
+ qrBox.innerHTML="";
+ QRCode.toCanvas(url,{width:220},(e,c)=>qrBox.appendChild(c));
+}
+
+/* URL復元 */
+function loadFromURL(){
+ const p=new URLSearchParams(location.search);
+ if(p.get("data")){
+  let d=JSON.parse(decodeURIComponent(p.get("data")));
+  startTime.value=d.startTime;
+  routes=d.routes;
+  if(d.name)saveName.value=d.name;
+ }
 }
 
 /* 初期 */
