@@ -8,35 +8,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ツーリング">
-<link rel="apple-touch-icon" href="icon.png">
 
 <style>
-body { font-family:sans-serif; padding:10px; max-width:600px; margin:auto; background:#fff; color:#000; }
-body.dark { background:#111; color:#eee; }
-
-button { padding:10px; margin:5px 0; font-size:16px; width:100%; border:none; border-radius:6px; }
-.btn-save{background:#4CAF50;color:#fff;}
-.btn-load{background:#2196F3;color:#fff;}
-.btn-delete{background:#f44336;color:#fff;}
-.btn-add{background:#FF9800;color:#fff;}
-.btn-toggle{background:#555;color:#fff;}
-
-input,select{width:100%;padding:8px;margin:5px 0;font-size:16px;}
-
-.table-wrap{overflow-x:auto;}
-table{border-collapse:collapse;min-width:700px;width:100%;table-layout:fixed;}
-th,td{border:1px solid #ccc;padding:6px;text-align:center;}
-body.dark th,body.dark td{border-color:#555;}
-th{background:#eee;} body.dark th{background:#333;}
-
-th:nth-child(1),td:nth-child(1){width:40px;}
-th:nth-child(2),td:nth-child(2){width:120px;}
-th:nth-child(3),td:nth-child(3){width:120px;}
-
-.row{border-bottom:1px solid #ccc;padding:10px 0;}
-.time{color:#2196F3;font-weight:bold;}
-.final{color:#f44336;font-size:22px;font-weight:bold;}
+body { font-family:sans-serif; padding:10px; max-width:600px; margin:auto; }
+button { padding:10px; margin:5px 0; width:100%; font-size:16px; }
+input { width:100%; padding:8px; margin:5px 0; }
+.time { color:blue; font-weight:bold; }
+.final { color:red; font-size:22px; }
 </style>
 
 </head>
@@ -45,173 +23,149 @@ th:nth-child(3),td:nth-child(3){width:120px;}
 
 <h2>ツーリング時間計算</h2>
 
-<button class="btn-toggle" onclick="toggleMode()">📱⇄📊 UI切替</button> <button class="btn-toggle" onclick="toggleDark()">🌙 ダーク</button> <button onclick="shareURL()">🔗 URL共有</button> <button onclick="showQR()">📷 QR表示</button>
+出発時間 <input type="time" id="startTime" value="07:00">
 
-出発時間 <input type="time" id="startTime" value="07:00" onchange="calculate()">
+<button onclick="addRow()">＋ルート追加</button> <button onclick="shareURL()">🔗 URL共有</button> <button onclick="showQR()">📷 QR表示</button>
 
-保存名<input id="saveName"> <button class="btn-save" onclick="saveData()">💾 保存</button> <select id="saveList"></select> <button class="btn-load" onclick="loadData()">📂 読込</button> <button class="btn-delete" onclick="deleteData()">❌ 削除</button>
-
-<button onclick="exportData()">📤 書き出し</button> <input type="file" onchange="importData(event)">
-
-<hr>
 <div id="app"></div>
-<button class="btn-add" onclick="addRow()">＋ルート追加</button>
-
 <h3 id="final"></h3>
-<div id="qrBox" style="text-align:center;"></div>
+<div id="qrBox"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <script>
 let routes=[];
-let mode=localStorage.getItem("mode")||"mobile";
 
-/* ダーク */
-if(localStorage.getItem("dark")==="on"){document.body.classList.add("dark");}
-function toggleDark(){
- document.body.classList.toggle("dark");
- localStorage.setItem("dark",document.body.classList.contains("dark")?"on":"off");
-}
-
-/* UI */
-function toggleMode(){
- mode=mode==="mobile"?"table":"mobile";
- localStorage.setItem("mode",mode);
- render();
+/* ===== データ取得（重要：ここで常に最新を作る） */
+function getData(){
+  return {
+    startTime: document.getElementById("startTime").value,
+    routes: routes
+  };
 }
 
-/* 保存 */
-function getAllData(){return JSON.parse(localStorage.getItem("touringList")||"{}");}
-function updateSaveList(){
- saveList.innerHTML="";
- Object.keys(getAllData()).forEach(n=>saveList.innerHTML+=`<option>${n}</option>`);
-}
-function saveData(){
- let name=saveName.value;if(!name)return;
- let d=getAllData();
- d[name]={startTime:startTime.value,routes};
- localStorage.setItem("touringList",JSON.stringify(d));
- updateSaveList();
-}
-function loadData(){
- let d=getAllData()[saveList.value];if(!d)return;
- startTime.value=d.startTime;
- routes=d.routes;
- render();
-}
-function deleteData(){
- let d=getAllData();delete d[saveList.value];
- localStorage.setItem("touringList",JSON.stringify(d));
- updateSaveList();
+/* ===== URL生成（共通化） */
+function createURL(){
+  const data = getData();
+
+  // 空チェック（ここ追加）
+  if(!data.routes.length){
+    alert("ルートを1つ以上入力しろ");
+    return null;
+  }
+
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  const url = location.origin + location.pathname + "?data=" + encoded;
+
+  console.log("生成URL:", url); // ←デバッグ用
+
+  return url;
 }
 
-/* JSON共有 */
-function exportData(){
- const blob=new Blob([JSON.stringify({startTime:startTime.value,routes})],{type:"application/json"});
- const a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download="touring.json";
- a.click();
-}
-function importData(e){
- const file=e.target.files[0];if(!file)return;
- const r=new FileReader();
- r.onload=()=>{
-  let d=JSON.parse(r.result);
-  startTime.value=d.startTime;
-  routes=d.routes;
-  render();
- };
- r.readAsText(file);
-}
-
-/* URL共有 */
+/* ===== URL共有 ===== */
 function shareURL(){
- const encoded=encodeURIComponent(JSON.stringify({startTime:startTime.value,routes}));
- const url=location.origin+location.pathname+"?data="+encoded;
- if(navigator.share){navigator.share({url});}
- else prompt("コピーして使え",url);
+  const url = createURL();
+  if(!url) return;
+
+  if(navigator.share){
+    navigator.share({ url });
+  }else{
+    prompt("コピーして使え", url);
+  }
 }
 
-/* URL復元 */
-function loadFromURL(){
- const p=new URLSearchParams(location.search);
- if(p.get("data")){
-  let d=JSON.parse(decodeURIComponent(p.get("data")));
-  startTime.value=d.startTime;
-  routes=d.routes;
- }
-}
-
-/* QR */
+/* ===== QR ===== */
 function showQR(){
- const encoded=encodeURIComponent(JSON.stringify({startTime:startTime.value,routes}));
- const url=location.origin+location.pathname+"?data="+encoded;
- qrBox.innerHTML="";
- QRCode.toCanvas(url,{width:200},(e,c)=>qrBox.appendChild(c));
+  const url = createURL();
+  if(!url) return;
+
+  const box = document.getElementById("qrBox");
+  box.innerHTML = "";
+
+  QRCode.toCanvas(url, { width:200 }, (err, canvas)=>{
+    if(err) return console.error(err);
+    box.appendChild(canvas);
+  });
 }
 
-/* 行 */
-function addRow(){routes.push({from:"",to:"",distance:0,speed:0,break:0});render();}
-function update(i,k,v){routes[i][k]=(k==="from"||k==="to")?v:Number(v);calculate();}
+/* ===== URLから復元 ===== */
+function loadFromURL(){
+  const params = new URLSearchParams(location.search);
+  const data = params.get("data");
 
-/* 描画 */
+  if(data){
+    try{
+      const decoded = JSON.parse(decodeURIComponent(data));
+      document.getElementById("startTime").value = decoded.startTime;
+      routes = decoded.routes;
+    }catch(e){
+      console.error("URL読み込み失敗");
+    }
+  }
+}
+
+/* ===== 行追加 ===== */
+function addRow(){
+  routes.push({from:"",to:"",distance:0,speed:0,break:0});
+  render();
+}
+
+/* ===== 更新 ===== */
+function update(i,k,v){
+  routes[i][k]=(k==="from"||k==="to")?v:Number(v);
+  calculate();
+}
+
+/* ===== 描画 ===== */
 function render(){
- const app=document.getElementById("app");
- if(mode==="table"){
-  app.innerHTML=`<div class="table-wrap"><table>
-  <tr><th>No</th><th>出発</th><th>到着</th><th>距離</th><th>速度</th><th>休憩</th><th>出発</th><th>到着</th></tr>
-  ${routes.map((r,i)=>`
-  <tr>
-  <td>${i+1}</td>
-  <td>${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`${routes[i-1]?.to||""}`}</td>
-  <td><input value="${r.to}" onchange="update(${i},'to',this.value)"></td>
-  <td><input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)"></td>
-  <td><input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)"></td>
-  <td><input type="number" value="${r.break}" onchange="update(${i},'break',this.value)"></td>
-  <td class="time" id="start_${i}"></td>
-  <td class="time" id="arrival_${i}"></td>
-  </tr>`).join("")}
-  </table></div>`;
- }else{
-  app.innerHTML=routes.map((r,i)=>`
-  <div class="row">
-  <b>${i+1}</b>
-  出発:${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`${routes[i-1]?.to||""}`}
-  到着:<input value="${r.to}" onchange="update(${i},'to',this.value)">
-  出発:<span id="start_${i}" class="time"></span>
-  到着:<span id="arrival_${i}" class="time"></span>
-  距離:<input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)">
-  速度:<input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)">
-  休憩:<input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
-  </div>`).join("");
- }
- calculate();
+  const app=document.getElementById("app");
+  app.innerHTML = routes.map((r,i)=>`
+    <div>
+      ${i+1}
+      出発:${i===0?`<input value="${r.from}" onchange="update(${i},'from',this.value)">`:`${routes[i-1]?.to||""}`}
+      到着:<input value="${r.to}" onchange="update(${i},'to',this.value)">
+      距離:<input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)">
+      速度:<input type="number" value="${r.speed}" onchange="update(${i},'speed',this.value)">
+      休憩:<input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
+      出発:<span id="start_${i}" class="time"></span>
+      到着:<span id="arrival_${i}" class="time"></span>
+    </div>
+  `).join("");
+
+  calculate();
 }
 
-/* 計算 */
+/* ===== 計算 ===== */
 function calculate(){
- let [h,m]=startTime.value.split(":").map(Number);
- let cur=h*60+m;
- let final="";
- routes.forEach((r,i)=>{
-  if(!r.speed||!r.distance)return;
-  let start=cur;
-  let arr=start+(r.distance/r.speed)*60;
-  let sh=Math.floor(start/60)%24, sm=Math.floor(start%60);
-  let ah=Math.floor(arr/60)%24, am=Math.floor(arr%60);
-  document.getElementById("start_"+i).textContent=`${pad(sh)}:${pad(sm)}`;
-  document.getElementById("arrival_"+i).textContent=`${pad(ah)}:${pad(am)}`;
-  cur=arr+r.break;
-  final=`${pad(ah)}:${pad(am)}`;
- });
- finalEl.innerHTML=final?`最終到着: <span class="final">${final}</span>`:"";
-}
-function pad(n){return n.toString().padStart(2,"0");}
+  let [h,m]=startTime.value.split(":").map(Number);
+  let cur=h*60+m;
+  let final="";
 
-/* 初期 */
+  routes.forEach((r,i)=>{
+    if(!r.speed||!r.distance) return;
+
+    let start=cur;
+    let arr=start+(r.distance/r.speed)*60;
+
+    let sh=Math.floor(start/60)%24;
+    let sm=Math.floor(start%60);
+    let ah=Math.floor(arr/60)%24;
+    let am=Math.floor(arr%60);
+
+    document.getElementById("start_"+i).textContent=`${pad(sh)}:${pad(sm)}`;
+    document.getElementById("arrival_"+i).textContent=`${pad(ah)}:${pad(am)}`;
+
+    cur=arr+r.break;
+    final=`${pad(ah)}:${pad(am)}`;
+  });
+
+  finalEl.innerHTML = final ? `最終到着: <span class="final">${final}</span>` : "";
+}
+
+function pad(n){ return n.toString().padStart(2,"0"); }
+
+/* 初期化 */
 loadFromURL();
-updateSaveList();
 addRow();
 render();
 </script>
