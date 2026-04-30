@@ -22,7 +22,7 @@ body.dark{
   color:#eee;
 }
 
-/* 上部固定 */
+/* 上固定 */
 .sticky{
   position:sticky;
   top:0;
@@ -139,7 +139,6 @@ th:nth-child(9),td:nth-child(9){width:150px;}
 
 <h2>ツーリング計算</h2>
 
-<!-- 上部固定 -->
 <div class="sticky">
   <button class="btn-toggle" onclick="toggleMode()">📱⇄📊 UI切替</button>
   <button class="btn-toggle" onclick="toggleDark()">🌙 ダーク</button>
@@ -179,7 +178,7 @@ let routes=[];
 
 let mode=localStorage.getItem("mode") || "mobile";
 
-/* ダークモード */
+/* ダーク */
 if(localStorage.getItem("dark")==="on"){
   document.body.classList.add("dark");
 }
@@ -208,6 +207,9 @@ function getAll(){
 }
 
 function updateSaveList(){
+
+  const saveList=document.getElementById("saveList");
+
   saveList.innerHTML="";
 
   Object.keys(getAll()).forEach(n=>{
@@ -217,14 +219,14 @@ function updateSaveList(){
 
 function saveData(){
 
-  let n=saveName.value;
+  let n=document.getElementById("saveName").value;
 
   if(!n)return;
 
   let d=getAll();
 
   d[n]={
-    startTime:startTime.value,
+    startTime:document.getElementById("startTime").value,
     routes
   };
 
@@ -235,20 +237,24 @@ function saveData(){
 
 function loadData(){
 
+  const saveList=document.getElementById("saveList");
+
   let d=getAll()[saveList.value];
 
   if(!d)return;
 
-  startTime.value=d.startTime;
+  document.getElementById("startTime").value=d.startTime;
 
   routes=d.routes;
 
-  saveName.value=saveList.value;
+  document.getElementById("saveName").value=saveList.value;
 
   render();
 }
 
 function deleteData(){
+
+  const saveList=document.getElementById("saveList");
 
   let d=getAll();
 
@@ -259,7 +265,7 @@ function deleteData(){
   updateSaveList();
 }
 
-/* 行操作 */
+/* 行 */
 function addRow(){
 
   routes.push({
@@ -304,6 +310,8 @@ function update(i,k,v){
 
 /* 描画 */
 function render(){
+
+  const app=document.getElementById("app");
 
   if(mode==="table"){
 
@@ -370,7 +378,7 @@ function render(){
     </div>
     `;
 
-  } else {
+  }else{
 
     app.innerHTML = routes.map((r,i)=>`
 
@@ -417,7 +425,11 @@ function render(){
 /* 計算 */
 function calculate(){
 
-  let [h,m]=startTime.value.split(":").map(Number);
+  const startTime=document.getElementById("startTime").value;
+
+  if(!startTime)return;
+
+  let [h,m]=startTime.split(":").map(Number);
 
   let cur=h*60+m;
 
@@ -452,11 +464,16 @@ function calculate(){
     let ah=Math.floor(ar/60)%24;
     let am=Math.floor(ar%60);
 
-    document.getElementById("start_"+i).textContent=
-      `${pad(sh)}:${pad(sm)}`;
+    let s=document.getElementById("start_"+i);
+    let a=document.getElementById("arrival_"+i);
 
-    document.getElementById("arrival_"+i).textContent=
-      `${pad(ah)}:${pad(am)}`;
+    if(s){
+      s.textContent=`${pad(sh)}:${pad(sm)}`;
+    }
+
+    if(a){
+      a.textContent=`${pad(ah)}:${pad(am)}`;
+    }
 
     totalDistance += Number(r.distance);
 
@@ -467,16 +484,15 @@ function calculate(){
     final=`${pad(ah)}:${pad(am)}`;
   });
 
-  finalEl.innerHTML=
+  document.getElementById("final").innerHTML =
     final
     ? `最終到着: <span class="final">${final}</span>`
     : "";
 
   let th=Math.floor(totalMinutes/60);
-
   let tm=Math.floor(totalMinutes%60);
 
-  document.getElementById("summary").innerHTML=
+  document.getElementById("summary").innerHTML =
     `総距離: ${totalDistance} km<br>
      総時間: ${th}時間 ${tm}分`;
 }
@@ -494,8 +510,8 @@ function shareURL(){
   }
 
   const data={
-    name:saveName.value || "",
-    startTime:startTime.value,
+    name:document.getElementById("saveName").value || "",
+    startTime:document.getElementById("startTime").value,
     routes
   };
 
@@ -512,7 +528,7 @@ function shareURL(){
   }
 }
 
-/* QR共有 */
+/* QR */
 function showQR(){
 
   if(!routes.length){
@@ -521,8 +537,8 @@ function showQR(){
   }
 
   const data={
-    name:saveName.value || "",
-    startTime:startTime.value,
+    name:document.getElementById("saveName").value || "",
+    startTime:document.getElementById("startTime").value,
     routes
   };
 
@@ -532,12 +548,16 @@ function showQR(){
     "?data="+
     encodeURIComponent(JSON.stringify(data));
 
+  const qrBox=document.getElementById("qrBox");
+
   qrBox.innerHTML="";
 
   QRCode.toCanvas(
     url,
     {width:220},
-    (e,c)=>qrBox.appendChild(c)
+    (e,c)=>{
+      if(c) qrBox.appendChild(c);
+    }
   );
 }
 
@@ -552,12 +572,12 @@ function loadFromURL(){
       decodeURIComponent(p.get("data"))
     );
 
-    startTime.value=d.startTime;
+    document.getElementById("startTime").value=d.startTime;
 
     routes=d.routes;
 
     if(d.name){
-      saveName.value=d.name;
+      document.getElementById("saveName").value=d.name;
     }
   }
 }
