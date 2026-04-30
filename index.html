@@ -22,7 +22,6 @@ body.dark{
   color:#eee;
 }
 
-/* 上固定 */
 .sticky{
   position:sticky;
   top:0;
@@ -31,7 +30,6 @@ body.dark{
   padding-bottom:8px;
 }
 
-/* 上ボタン2列 */
 .topGrid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -42,7 +40,6 @@ body.dark{
   margin:0;
 }
 
-/* 上サマリー */
 #topSummary{
   margin-top:8px;
   padding:8px;
@@ -56,7 +53,6 @@ body.dark #topSummary{
   background:rgba(255,255,255,0.08);
 }
 
-/* ボタン */
 button{
   padding:10px;
   margin:4px 0;
@@ -79,7 +75,6 @@ button{
   margin:2px 1%;
 }
 
-/* 入力 */
 input,select{
   width:100%;
   padding:8px;
@@ -87,22 +82,23 @@ input,select{
   box-sizing:border-box;
 }
 
-/* 表 */
 .table-wrap{
   overflow-x:auto;
 }
 
 table{
   border-collapse:collapse;
-  min-width:720px;
+  min-width:980px;
   width:100%;
   table-layout:fixed;
+  font-size:13px;
 }
 
 th,td{
   border:1px solid #ccc;
   padding:4px;
   text-align:center;
+  word-break:break-word;
 }
 
 body.dark th,
@@ -121,24 +117,32 @@ body.dark th{
 td input{
   width:100%;
   box-sizing:border-box;
-  font-size:14px;
+  font-size:12px;
   margin:0;
+  white-space:normal;
 }
 
-/* 列幅 */
 th:nth-child(1),td:nth-child(1){width:40px;}
-th:nth-child(2),td:nth-child(2){width:120px;}
-th:nth-child(3),td:nth-child(3){width:120px;}
-th:nth-child(4),td:nth-child(4){width:80px;}
+th:nth-child(2),td:nth-child(2){width:50px;}
+th:nth-child(3),td:nth-child(3){width:180px;}
+th:nth-child(4),td:nth-child(4){width:180px;}
 th:nth-child(5),td:nth-child(5){width:80px;}
 th:nth-child(6),td:nth-child(6){width:80px;}
-th:nth-child(7),td:nth-child(7){width:90px;}
+th:nth-child(7),td:nth-child(7){width:80px;}
 th:nth-child(8),td:nth-child(8){width:90px;}
-th:nth-child(9),td:nth-child(9){width:150px;}
+th:nth-child(9),td:nth-child(9){width:90px;}
+th:nth-child(10),td:nth-child(10){width:120px;}
 
 .row{
   border-bottom:1px solid #ccc;
-  padding:10px 0;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(0,0,0,0.03);
+  margin-bottom:10px;
+}
+
+body.dark .row{
+  background:rgba(255,255,255,0.05);
 }
 
 .time{
@@ -157,6 +161,22 @@ th:nth-child(9),td:nth-child(9){width:150px;}
   font-weight:bold;
   margin-top:10px;
 }
+
+.dragHandle{
+  cursor:grab;
+  font-size:22px;
+  padding:4px 10px;
+  user-select:none;
+  touch-action:none;
+}
+
+.dragging{
+  opacity:0.5;
+}
+
+.sortable-ghost{
+  opacity:0.3;
+}
 </style>
 </head>
 
@@ -164,7 +184,6 @@ th:nth-child(9),td:nth-child(9){width:150px;}
 
 <h2>ツーリング計算</h2>
 
-<!-- 上固定 -->
 <div class="sticky">
 
   <div class="topGrid">
@@ -187,7 +206,6 @@ th:nth-child(9),td:nth-child(9){width:150px;}
 
   </div>
 
-  <!-- 常時表示 -->
   <div id="topSummary">
     🏍 総距離: 0 km<br>
     ⏰ 総時間: 0時間0分
@@ -222,13 +240,13 @@ th:nth-child(9),td:nth-child(9){width:150px;}
 <div id="qrBox" style="text-align:center;margin-top:10px;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
 <script>
 let routes=[];
 
 let mode=localStorage.getItem("mode") || "mobile";
 
-/* ダーク */
 if(localStorage.getItem("dark")==="on"){
   document.body.classList.add("dark");
 }
@@ -245,7 +263,6 @@ function toggleDark(){
   );
 }
 
-/* UI切替 */
 function toggleMode(){
 
   mode = mode==="mobile"
@@ -257,7 +274,6 @@ function toggleMode(){
   render();
 }
 
-/* 保存 */
 function getAll(){
 
   return JSON.parse(
@@ -331,7 +347,6 @@ function deleteData(){
   updateSaveList();
 }
 
-/* 行 */
 function addRow(){
 
   routes.push({
@@ -375,7 +390,6 @@ function update(i,k,v){
   calculate();
 }
 
-/* 描画 */
 function render(){
 
   const app=document.getElementById("app");
@@ -385,9 +399,11 @@ function render(){
     app.innerHTML=`
     <div class="table-wrap">
 
-    <table>
+    <table id="routeTable">
 
+    <thead>
     <tr>
+      <th></th>
       <th>No</th>
       <th>出発</th>
       <th>到着</th>
@@ -398,10 +414,15 @@ function render(){
       <th>到着</th>
       <th>操作</th>
     </tr>
+    </thead>
+
+    <tbody>
 
     ${routes.map((r,i)=>`
 
     <tr>
+
+      <td class="dragHandle">☰</td>
 
       <td>${i+1}</td>
 
@@ -434,30 +455,54 @@ function render(){
       <td class="time" id="arrival_${i}"></td>
 
       <td>
-        <button class="btn-mini" onclick="insertRow(${i})">
-          ここに追加
-        </button>
-
-        <button class="btn-mini" onclick="deleteRow(${i})">
-          削除
-        </button>
+        <button class="btn-mini" onclick="insertRow(${i})">追加</button>
+        <button class="btn-mini" onclick="deleteRow(${i})">削除</button>
       </td>
 
     </tr>
 
     `).join("")}
 
+    </tbody>
+
     </table>
     </div>
     `;
 
+    const tbody=document.querySelector("#routeTable tbody");
+
+    new Sortable(tbody,{
+      animation:150,
+      handle:".dragHandle",
+      ghostClass:"sortable-ghost",
+      chosenClass:"dragging",
+
+      onEnd:(evt)=>{
+
+        const moved=routes.splice(evt.oldIndex,1)[0];
+
+        routes.splice(evt.newIndex,0,moved);
+
+        render();
+      }
+    });
+
   }else{
 
-    app.innerHTML=routes.map((r,i)=>`
+    app.innerHTML=`
+    <div id="routeList">
+
+    ${routes.map((r,i)=>`
 
     <div class="row">
 
-      <b>${i+1}</b><br>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+
+        <b>${i+1}区間</b>
+
+        <div class="dragHandle">☰</div>
+
+      </div>
 
       出発:
       ${
@@ -469,11 +514,13 @@ function render(){
       到着:
       <input value="${r.to}" onchange="update(${i},'to',this.value)">
 
-      出発:
-      <span id="start_${i}" class="time"></span>
-
-      到着:
-      <span id="arrival_${i}" class="time"></span>
+      <div style="margin-top:8px;">
+        出発:
+        <span id="start_${i}" class="time"></span>
+        ｜ 
+        到着:
+        <span id="arrival_${i}" class="time"></span>
+      </div>
 
       距離:
       <input type="number" value="${r.distance}" onchange="update(${i},'distance',this.value)">
@@ -484,23 +531,41 @@ function render(){
       休憩:
       <input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
 
-      <button onclick="insertRow(${i})">
-        ＋追加
-      </button>
+      <button onclick="insertRow(${i})">＋追加</button>
 
-      <button onclick="deleteRow(${i})">
-        削除
-      </button>
+      <button onclick="deleteRow(${i})">削除</button>
 
     </div>
 
-    `).join("");
+    `).join("")}
+
+    </div>
+    `;
+
+    const el=document.getElementById("routeList");
+
+    new Sortable(el,{
+      animation:150,
+      handle:".dragHandle",
+      ghostClass:"sortable-ghost",
+      chosenClass:"dragging",
+      delay:150,
+      delayOnTouchOnly:true,
+
+      onEnd:(evt)=>{
+
+        const moved=routes.splice(evt.oldIndex,1)[0];
+
+        routes.splice(evt.newIndex,0,moved);
+
+        render();
+      }
+    });
   }
 
   calculate();
 }
 
-/* 計算 */
 function calculate(){
 
   const startTime=document.getElementById("startTime").value;
@@ -579,12 +644,10 @@ function calculate(){
 
   let tm=Math.floor(totalMinutes%60);
 
-  /* 下表示 */
   document.getElementById("summary").innerHTML =
     `総距離: ${totalDistance} km<br>
      総時間: ${th}時間 ${tm}分`;
 
-  /* 上固定表示 */
   document.getElementById("topSummary").innerHTML =
     `🏍 総距離: ${totalDistance} km<br>
      ⏰ 総時間: ${th}時間 ${tm}分`;
@@ -595,7 +658,6 @@ function pad(n){
   return n.toString().padStart(2,"0");
 }
 
-/* URL共有 */
 function shareURL(){
 
   if(!routes.length){
@@ -625,7 +687,6 @@ function shareURL(){
   }
 }
 
-/* QR */
 function showQR(){
 
   if(!routes.length){
@@ -658,7 +719,6 @@ function showQR(){
   );
 }
 
-/* URL復元 */
 function loadFromURL(){
 
   const p=new URLSearchParams(location.search);
@@ -679,7 +739,6 @@ function loadFromURL(){
   }
 }
 
-/* 初期 */
 loadFromURL();
 
 updateSaveList();
