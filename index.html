@@ -31,6 +31,31 @@ body.dark{
   padding-bottom:8px;
 }
 
+/* 上ボタン2列 */
+.topGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+
+.topGrid button{
+  margin:0;
+}
+
+/* 上サマリー */
+#topSummary{
+  margin-top:8px;
+  padding:8px;
+  border-radius:8px;
+  background:rgba(0,0,0,0.08);
+  font-weight:bold;
+  font-size:16px;
+}
+
+body.dark #topSummary{
+  background:rgba(255,255,255,0.08);
+}
+
 /* ボタン */
 button{
   padding:10px;
@@ -139,11 +164,35 @@ th:nth-child(9),td:nth-child(9){width:150px;}
 
 <h2>ツーリング計算</h2>
 
+<!-- 上固定 -->
 <div class="sticky">
-  <button class="btn-toggle" onclick="toggleMode()">📱⇄📊 UI切替</button>
-  <button class="btn-toggle" onclick="toggleDark()">🌙 ダーク</button>
-  <button class="btn-toggle" onclick="showQR()">📷 QR共有</button>
-  <button class="btn-toggle" onclick="shareURL()">🔗 URL共有</button>
+
+  <div class="topGrid">
+
+    <button class="btn-toggle" onclick="toggleMode()">
+      📱⇄📊 UI切替
+    </button>
+
+    <button class="btn-toggle" onclick="toggleDark()">
+      🌙 ダーク
+    </button>
+
+    <button class="btn-toggle" onclick="showQR()">
+      📷 QR共有
+    </button>
+
+    <button class="btn-toggle" onclick="shareURL()">
+      🔗 URL共有
+    </button>
+
+  </div>
+
+  <!-- 常時表示 -->
+  <div id="topSummary">
+    🏍 総距離: 0 km<br>
+    ⏰ 総時間: 0時間0分
+  </div>
+
 </div>
 
 出発時間
@@ -157,6 +206,7 @@ th:nth-child(9),td:nth-child(9){width:150px;}
 <select id="saveList"></select>
 
 <button class="btn-load" onclick="loadData()">📂 読込</button>
+
 <button class="btn-delete" onclick="deleteData()">❌ 削除</button>
 
 <hr>
@@ -184,17 +234,23 @@ if(localStorage.getItem("dark")==="on"){
 }
 
 function toggleDark(){
+
   document.body.classList.toggle("dark");
 
   localStorage.setItem(
     "dark",
-    document.body.classList.contains("dark") ? "on" : "off"
+    document.body.classList.contains("dark")
+      ? "on"
+      : "off"
   );
 }
 
 /* UI切替 */
 function toggleMode(){
-  mode = mode==="mobile" ? "table" : "mobile";
+
+  mode = mode==="mobile"
+    ? "table"
+    : "mobile";
 
   localStorage.setItem("mode",mode);
 
@@ -203,7 +259,10 @@ function toggleMode(){
 
 /* 保存 */
 function getAll(){
-  return JSON.parse(localStorage.getItem("touringList") || "{}");
+
+  return JSON.parse(
+    localStorage.getItem("touringList") || "{}"
+  );
 }
 
 function updateSaveList(){
@@ -213,6 +272,7 @@ function updateSaveList(){
   saveList.innerHTML="";
 
   Object.keys(getAll()).forEach(n=>{
+
     saveList.innerHTML += `<option>${n}</option>`;
   });
 }
@@ -230,7 +290,10 @@ function saveData(){
     routes
   };
 
-  localStorage.setItem("touringList",JSON.stringify(d));
+  localStorage.setItem(
+    "touringList",
+    JSON.stringify(d)
+  );
 
   updateSaveList();
 }
@@ -260,7 +323,10 @@ function deleteData(){
 
   delete d[saveList.value];
 
-  localStorage.setItem("touringList",JSON.stringify(d));
+  localStorage.setItem(
+    "touringList",
+    JSON.stringify(d)
+  );
 
   updateSaveList();
 }
@@ -301,7 +367,8 @@ function deleteRow(i){
 
 function update(i,k,v){
 
-  routes[i][k]=(k==="from"||k==="to")
+  routes[i][k]=
+    (k==="from"||k==="to")
     ? v
     : Number(v);
 
@@ -317,6 +384,7 @@ function render(){
 
     app.innerHTML=`
     <div class="table-wrap">
+
     <table>
 
     <tr>
@@ -366,8 +434,13 @@ function render(){
       <td class="time" id="arrival_${i}"></td>
 
       <td>
-        <button class="btn-mini" onclick="insertRow(${i})">ここに追加</button>
-        <button class="btn-mini" onclick="deleteRow(${i})">削除</button>
+        <button class="btn-mini" onclick="insertRow(${i})">
+          ここに追加
+        </button>
+
+        <button class="btn-mini" onclick="deleteRow(${i})">
+          削除
+        </button>
       </td>
 
     </tr>
@@ -380,7 +453,7 @@ function render(){
 
   }else{
 
-    app.innerHTML = routes.map((r,i)=>`
+    app.innerHTML=routes.map((r,i)=>`
 
     <div class="row">
 
@@ -411,8 +484,13 @@ function render(){
       休憩:
       <input type="number" value="${r.break}" onchange="update(${i},'break',this.value)">
 
-      <button onclick="insertRow(${i})">＋追加</button>
-      <button onclick="deleteRow(${i})">削除</button>
+      <button onclick="insertRow(${i})">
+        ＋追加
+      </button>
+
+      <button onclick="deleteRow(${i})">
+        削除
+      </button>
 
     </div>
 
@@ -452,11 +530,26 @@ function calculate(){
       }
     }
 
-    if(!r.speed || !r.distance)return;
+    let distance=Number(r.distance)||0;
+    let speed=Number(r.speed)||0;
+    let rest=Number(r.break)||0;
+
+    totalDistance += distance;
+
+    if(speed<=0 || distance<=0){
+
+      let s=document.getElementById("start_"+i);
+      let a=document.getElementById("arrival_"+i);
+
+      if(s)s.textContent="-";
+      if(a)a.textContent="-";
+
+      return;
+    }
 
     let st=cur;
 
-    let ar=st+(r.distance/r.speed)*60;
+    let ar=st+(distance/speed)*60;
 
     let sh=Math.floor(st/60)%24;
     let sm=Math.floor(st%60);
@@ -467,19 +560,12 @@ function calculate(){
     let s=document.getElementById("start_"+i);
     let a=document.getElementById("arrival_"+i);
 
-    if(s){
-      s.textContent=`${pad(sh)}:${pad(sm)}`;
-    }
+    if(s)s.textContent=`${pad(sh)}:${pad(sm)}`;
+    if(a)a.textContent=`${pad(ah)}:${pad(am)}`;
 
-    if(a){
-      a.textContent=`${pad(ah)}:${pad(am)}`;
-    }
+    totalMinutes += (ar-st)+rest;
 
-    totalDistance += Number(r.distance);
-
-    totalMinutes += (ar - st) + Number(r.break);
-
-    cur=ar+r.break;
+    cur=ar+rest;
 
     final=`${pad(ah)}:${pad(am)}`;
   });
@@ -490,14 +576,22 @@ function calculate(){
     : "";
 
   let th=Math.floor(totalMinutes/60);
+
   let tm=Math.floor(totalMinutes%60);
 
+  /* 下表示 */
   document.getElementById("summary").innerHTML =
     `総距離: ${totalDistance} km<br>
      総時間: ${th}時間 ${tm}分`;
+
+  /* 上固定表示 */
+  document.getElementById("topSummary").innerHTML =
+    `🏍 総距離: ${totalDistance} km<br>
+     ⏰ 総時間: ${th}時間 ${tm}分`;
 }
 
 function pad(n){
+
   return n.toString().padStart(2,"0");
 }
 
@@ -522,8 +616,11 @@ function shareURL(){
     encodeURIComponent(JSON.stringify(data));
 
   if(navigator.share){
+
     navigator.share({url});
+
   }else{
+
     prompt("コピー",url);
   }
 }
@@ -556,7 +653,7 @@ function showQR(){
     url,
     {width:220},
     (e,c)=>{
-      if(c) qrBox.appendChild(c);
+      if(c)qrBox.appendChild(c);
     }
   );
 }
